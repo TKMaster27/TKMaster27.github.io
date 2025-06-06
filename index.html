@@ -4,61 +4,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tarique Mackay - Personal Webpage</title>
+    <title>Tarique Mackay - Computer Science Student</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 
 <body>
-
-    <header>
-        <h1>Tarique Mackay</h1>
-        <p>Final Year Computer Science & Computer Engineering Student</p>
-    </header>
-
-    <div class="container">
-        <h2>About Me</h2>
-    <p>I'm Tarique Mackay, a final year student at the University of Cape Town, majoring in Computer Science and Computer Engineering. I have a passion for learning new technologies and I'm always up for a challenge.</p>
-
-        <h2>Skills</h2>
-        <ul>
-            <li>Java</li>
-            <li>Python</li>
-            <li>SQL</li>
-        </ul>
-
-        <h2>Projects</h2>
-        <div class="project">
-            <h3>UCT Faculty Transfer System</h3>
-            <p>This system determines based on your UCT transcript of you are able to transfer from some faculty into the science faculty at UCT.</p>
-            <p><strong>Technologies:</strong> Java, SQL</p>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#home" class="nav-brand">TM</a>
+            <ul class="nav-menu">
+                <li><a href="#about">About</a></li>
+                <li><a href="#skills">Skills</a></li>
+                <li><a href="#projects">Projects</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
         </div>
+    </nav>
 
-        <div class="project">
-            <h3>Taxi App Path Finding System</h3>
-            <p>This project determines the fastest route from some point on a map to a destination of a taxi rank</p>
-            <p><strong>Technologies:</strong> Java</p>
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>Tarique Mackay</h1>
+            <p class="hero-subtitle">Computer Science & Computer Engineering Student</p>
+            <p class="hero-description">Passionate about technology, innovation, and solving complex problems</p>
+            <div class="hero-buttons">
+                <a href="#projects" class="btn btn-primary">View Projects</a>
+                <a href="#contact" class="btn btn-secondary">Get In Touch</a>
+            </div>
         </div>
+    </section>
 
-        <div class="project">
-            <h3>Hashmap Optimisation Using multithreading</h3>
-            <p>Used multithreading to reduce time taken on an optimisation problem from hours to seconds.</p>
-            <p><strong>Technologies:</strong> Java</p>
-        </div>
+    <main class="container">
+        <section id="about" class="section">
+            <h2 class="section-title">About Me</h2>
+            <div class="about-content">
+                <p>I'm a final year student at the University of Cape Town, majoring in Computer Science and Computer Engineering. With a passion for learning new technologies and tackling challenging problems, I'm constantly exploring innovative solutions in software development.</p>
+            </div>
+        </section>
 
-        <div class="project">
-            <h3>Snakes and Ladders</h3>
-            <p>Created a game of snakes and ladders, including a pause menu, music, a shop and statistics for the player. This project also has user authentication and user validation.</p>
-            <p><strong>Technologies:</strong> Java</p>
-        </div>
+        <section id="skills" class="section">
+            <h2 class="section-title">Skills</h2>
+            <div class="skills-grid">
+                <div class="skill-item">
+                    <i class="fab fa-java"></i>
+                    <span>Java</span>
+                </div>
+                <div class="skill-item">
+                    <i class="fab fa-python"></i>
+                    <span>Python</span>
+                </div>
+                <div class="skill-item">
+                    <i class="fas fa-database"></i>
+                    <span>SQL</span>
+                </div>
+            </div>
+        </section>
 
-        <!-- Add more projects as needed -->
+        <section id="projects" class="section">
+            <h2 class="section-title">Projects</h2>
+            <div class="projects-grid">
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>UCT Faculty Transfer System</h3>
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <p>A system that analyzes UCT transcripts to determine eligibility for faculty transfers into the science faculty.</p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Java</span>
+                        <span class="tech-tag">SQL</span>
+                    </div>
+                </div>
 
-    </div>
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Taxi App Path Finding System</h3>
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <p>An intelligent routing system that determines the fastest path from any point on a map to the nearest taxi rank.</p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Java</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Hashmap Optimization</h3>
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <p>Implemented multithreading techniques to dramatically reduce optimization problem execution time from hours to seconds.</p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Java</span>
+                        <span class="tech-tag">Multithreading</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Snakes and Ladders Game</h3>
+                        <i class="fas fa-gamepad"></i>
+                    </div>
+                    <p>A complete game implementation featuring pause menu, music, shop system, player statistics, and user authentication.</p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Java</span>
+                        <span class="tech-tag">Game Development</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="section">
+            <h2 class="section-title">Get In Touch</h2>
+            <div class="contact-content">
+                <p>Interested in collaborating or have any questions? I'd love to hear from you!</p>
+                <div class="contact-links">
+                    <a href="mailto:your.email@example.com" class="contact-link">
+                        <i class="fas fa-envelope"></i>
+                        Email Me
+                    </a>
+                    <a href="https://linkedin.com/in/yourprofile" class="contact-link">
+                        <i class="fab fa-linkedin"></i>
+                        LinkedIn
+                    </a>
+                    <a href="https://github.com/yourprofile" class="contact-link">
+                        <i class="fab fa-github"></i>
+                        GitHub
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
 
     <footer>
-        &copy; 2024 Tarique Mackay - Personal Webpage
+        <p>&copy; 2025 Tarique Mackay. All rights reserved.</p>
     </footer>
-
 </body>
 
 </html>
