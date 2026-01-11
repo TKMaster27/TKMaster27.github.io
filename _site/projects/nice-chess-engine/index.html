@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NICE Chess Engine Case Study - Tarique Mackay</title>
+    <meta name="description" content="A deep dive into building a UCI-compliant chess engine in C++ using Bitboards.">
+    <link rel="stylesheet" href="/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- MathJax for math equations -->
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+    </script>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }
+        };
+    </script>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">TM</a>
+            <ul class="nav-menu">
+                <li><a href="/#about">About</a></li>
+                <li><a href="/#skills">Skills</a></li>
+                <li><a href="/#projects">Projects</a></li>
+                <li><a href="/#contact">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="container project-page">
+        <article class="markdown-content">
+            <script type="text/javascript" id="MathJax-script" async="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }
+  };
+</script>
+
+<h1 id="nice-chess-engine-️">NICE Chess Engine ♟️</h1>
+
+<h2 id="overview">Overview</h2>
+
+<p>The <strong>Not Intelligent Chess Engine</strong>, otherwise known as <strong>NICE</strong>, is a UCI chess engine that implements key learning principles using low-level languages. NICE is developed in <strong>C++</strong> for speed and efficiency, allowing us to utilize low-level operations and CPU instructions to further speed up the engine. The engine uses <strong>Data-Oriented Design</strong> principles, prioritizing performance over object-oriented data representation.</p>
+
+<p>NICE is live on Lichess for all to try, challenge, and test its strength. It is comparable to Stockfish Level 5, with an estimated Elo rating of <strong>1500-1700</strong>.</p>
+
+<div style="text-align: center; margin: 2rem 0;">
+  <a href="https://lichess.org/@/NICE_BOT" style="display: inline-block; padding: 12px 24px; background: linear-gradient(45deg, #667eea, #764ba2); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+    🎮 Play Against NICE on Lichess
+  </a>
+</div>
+
+<hr />
+
+<h2 id="technical-highlights">Technical Highlights</h2>
+
+<ul>
+  <li><strong>Board Representation</strong>: Hybrid approach using Bitboards and Mailbox</li>
+  <li><strong>Move Generation</strong>: Optimized for sliders and leapers with precomputed lookup tables</li>
+  <li><strong>Search Algorithm</strong>: Negamax with Alpha-Beta pruning</li>
+  <li><strong>Evaluation</strong>: Material + Piece-Square Tables</li>
+  <li><strong>Performance</strong>: ~1500-1700 Elo rating</li>
+</ul>
+
+<hr />
+
+<h1 id="board-representation">Board Representation</h1>
+
+<p>There are typically 2 ways to represent they game board in an engine: <strong>Mailbox</strong> and <strong>Bitboards</strong>.</p>
+
+<h2 id="approach-1-mailbox">Approach 1: Mailbox</h2>
+
+<p>Mailbox is the more intuitive approach where the board is represented as an <strong>array of 64 elements</strong> where each element contains the ID of what type of piece is on that square.</p>
+
+<h3 id="advantages-">Advantages ✅</h3>
+<ul>
+  <li><strong>Ultra-fast lookup speed</strong>: $O(1)$ time complexity to check what piece is on any specific square</li>
+  <li>Perfect for checking if a square is occupied or capturing pieces</li>
+</ul>
+
+<h3 id="disadvantages-">Disadvantages ❌</h3>
+<ul>
+  <li><strong>Inefficient piece location</strong>: Must loop through entire 64-element array to find pieces</li>
+  <li>Even with only 3 pieces on the board, must scan all 64 squares</li>
+  <li>No quick way to know where pieces are without iteration</li>
+</ul>
+
+<hr />
+
+<h2 id="approach-2-bitboards">Approach 2: Bitboards</h2>
+
+<p>Bitboard is a way of compressing the idea of the mailbox into a <strong>single 64-bit integer</strong>. It leverages the fact that there are 64 squares on the board and that modern computer hardware and CPUs have a 64-bit architecture. This means we can fit information of an entire board inside a single CPU register.</p>
+
+<h3 id="why-this-matters">Why This Matters</h3>
+<p>Each bit in the 64-bit integer represents one square on the board. If the bit is <code class="language-plaintext highlighter-rouge">1</code>, there’s a piece on that square. If it’s <code class="language-plaintext highlighter-rouge">0</code>, the square is empty.</p>
+
+<table cellspacing="0" cellpadding="0" style="border: 4px solid #333; border-collapse: collapse; margin: 0 auto; font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;">
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">56</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">57</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">58</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">59</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">60</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">61</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">62</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">63</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">48</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">49</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">50</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">51</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">52</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">53</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">54</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">55</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">40</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">41</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">42</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">43</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">44</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">45</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">46</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">47</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">32</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">33</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">34</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">35</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">36</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">37</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">38</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">39</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">24</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">25</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">26</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">27</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">28</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">29</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">31</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">16</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">17</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">18</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">19</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">20</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">21</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">22</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">23</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">8</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">9</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">10</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">11</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">12</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">13</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">14</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">15</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">1</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">2</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">3</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">4</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">5</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">6</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">7</td>
+  </tr>
+</table>
+
+<p>If we visualise the board being numbered as show above, we can map each square to 1 bit in a 64 bit unsigned integer.</p>
+
+<table cellspacing="0" cellpadding="0" style="border: 4px solid #333; border-collapse: collapse; margin: 0 auto; font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;">
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">56</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">57</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">58</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">59</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">60</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">61</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">62</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">63</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">48</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">49</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">50</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">51</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">52</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">53</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">54</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">55</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">40</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">41</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">42</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">43</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">44</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">45</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">46</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">47</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">32</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">33</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">34</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">35</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">36</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">37</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">38</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">39</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">24</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">25</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">26</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">27</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">28</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">29</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">31</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">16</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">17</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">18</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">19</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">20</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">21</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">22</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">23</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">♙</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">♙</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">♙</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">♙</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">♙</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">♙</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">♙</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">♙</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">1</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">2</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">3</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">4</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">5</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;">6</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;">7</td>
+  </tr>
+</table>
+
+<p>The board above with pawns can be represented internally as:</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>0b00000000 00000000 00000000 00000000 00000000 00000000 11111111 00000000
+</code></pre></div></div>
+
+<p>In this example, bits 8 to 15 have been flipped to <code class="language-plaintext highlighter-rouge">1</code>, representing pieces occupying those squares.</p>
+
+<h3 id="advantages--1">Advantages ✅</h3>
+<ul>
+  <li><strong>Lightning-fast move generation</strong>: All move generation is bitwise operations</li>
+  <li><strong>Instant attacked square checks</strong>: Simple bitmask application</li>
+  <li><strong>Fast piece counting</strong>: CPU instructions like <code class="language-plaintext highlighter-rouge">LSB</code> and <code class="language-plaintext highlighter-rouge">PopCount</code> give instant results</li>
+  <li><strong>Compact memory footprint</strong>: 13 bitboards = 104 bytes vs Mailbox = 252 bytes</li>
+</ul>
+
+<h3 id="disadvantages--1">Disadvantages ❌</h3>
+<ul>
+  <li><strong>No piece type information</strong>: Only shows occupied/empty, not what piece is there</li>
+  <li><strong>Multiple bitboards needed</strong>: One for each piece type (13 total for NICE)</li>
+</ul>
+
+<hr />
+
+<h2 id="the-solution-hybrid-approach-">The Solution: Hybrid Approach 🎯</h2>
+
+<p>The hybrid approach combines <strong>both Bitboards and Mailbox</strong>. Notice how the strengths of one representation perfectly complement the weaknesses of the other!</p>
+
+<h3 id="how-nice-uses-both">How NICE Uses Both</h3>
+<ul>
+  <li><strong>Bitboards</strong> for fast move generation and attack queries</li>
+  <li><strong>Mailbox</strong> for instant piece-type lookups</li>
+</ul>
+
+<h3 id="the-trade-off">The Trade-off</h3>
+<p>The only overhead is ensuring both representations stay <strong>synchronized</strong> to prevent board corruption. This is a small price to pay for the combined benefits of both approaches!</p>
+
+<hr />
+
+<h1 id="move-generation">Move Generation</h1>
+
+<h2 id="move-encoding">Move Encoding</h2>
+
+<p>A move is represented as a <strong>compact 32-bit integer</strong> for maximum efficiency and minimal memory footprint.</p>
+
+<h3 id="bit-layout">Bit Layout</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>Bits</th>
+      <th>Purpose</th>
+      <th>Range</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0-5</td>
+      <td>From square</td>
+      <td>0-63</td>
+    </tr>
+    <tr>
+      <td>6-11</td>
+      <td>To square</td>
+      <td>0-63</td>
+    </tr>
+    <tr>
+      <td>12-17</td>
+      <td>Flags</td>
+      <td>Castling, en passant, captures</td>
+    </tr>
+    <tr>
+      <td>18-21</td>
+      <td>Promoted to</td>
+      <td>Piece type</td>
+    </tr>
+    <tr>
+      <td>22-25</td>
+      <td>Piece captured</td>
+      <td>Piece type</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>This compact representation means each move takes just <strong>4 bytes</strong> of memory!</p>
+
+<hr />
+
+<h2 id="movement-categories">Movement Categories</h2>
+
+<p>Chess pieces fall into two fundamental categories based on how they move:</p>
+
+<h3 id="-sliders">🔹 Sliders</h3>
+<p>Pieces that <strong>slide</strong> across the board until hitting another piece or the edge</p>
+<ul>
+  <li><strong>Rooks</strong> (horizontal/vertical)</li>
+  <li><strong>Bishops</strong> (diagonal)</li>
+  <li><strong>Queens</strong> (all directions)</li>
+</ul>
+
+<h3 id="-leapers">🔸 Leapers</h3>
+<p>Pieces that <strong>“teleport”</strong> to their destination without blockers affecting them</p>
+<ul>
+  <li><strong>Knights</strong> (L-shape jumps)</li>
+  <li><strong>Kings</strong> (one square any direction)</li>
+  <li><strong>Pawns</strong> (special case: move like sliders, capture like leapers)</li>
+</ul>
+
+<hr />
+
+<h3 id="slider-move-generation">Slider Move Generation</h3>
+
+<p>Using <strong>directional offsets</strong>, we calculate the next position iteratively. The process loops until:</p>
+<ul>
+  <li>A blocker (piece) is encountered</li>
+  <li>The edge of the board is reached</li>
+</ul>
+
+<p>The offsets act as <strong>cardinal directions</strong> for movement:</p>
+
+<table cellspacing="0" cellpadding="0" style="border: 4px solid #333; border-collapse: collapse; margin: 0 auto; font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;">
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">+7</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">+9</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">♝</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">-9</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">-7</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">+8</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">-1</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">♜</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">+1</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">-8</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+  </tr>
+</table>
+
+<hr />
+
+<h3 id="leaper-move-generation">Leaper Move Generation</h3>
+
+<p>Since a Knight at square E4 <strong>always attacks the same squares</strong>, we don’t need runtime calculations!</p>
+
+<h4 id="optimization-strategy">Optimization Strategy</h4>
+<ol>
+  <li><strong>Pre-compute</strong> lookup tables for all 64 squares at startup</li>
+  <li><strong>Single array lookup</strong> at runtime: <code class="language-plaintext highlighter-rouge">Attacks = KnightTable[square_index]</code></li>
+  <li>Same approach works for Kings</li>
+</ol>
+
+<p>This turns move generation into an <strong>O(1) operation</strong>!</p>
+
+<table cellspacing="0" cellpadding="0" style="border: 4px solid #333; border-collapse: collapse; margin: 0 auto; font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;">
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">X</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">X</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">X</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">X</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: black;">♘</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">X</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">X</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">X</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: black;">X</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #b58863; color: #f0d9b5;"></td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 25px; background-color: #f0d9b5; color: #b58863;"></td>
+  </tr>
+</table>
+
+<h3 id="special-case-pawns-">Special Case: Pawns ♙</h3>
+
+<p>Pawns are <strong>unique hybrids</strong>:</p>
+<ul>
+  <li>Move like <strong>sliders</strong> (forward only)</li>
+  <li>Capture like <strong>leapers</strong> (diagonally)</li>
+</ul>
+
+<p>We handle them with specific bitmasks accounting for:</p>
+<ul>
+  <li><strong>En Passant</strong> captures</li>
+  <li><strong>Double-push</strong> from starting position</li>
+</ul>
+
+<hr />
+
+<h1 id="board-evaluation">Board Evaluation</h1>
+
+<h2 id="material-evaluation">Material Evaluation</h2>
+
+<p>Board evaluation is primarily based on <strong>material value</strong> - a simple but highly effective approach.</p>
+
+<h3 id="benefits">Benefits</h3>
+<ul>
+  <li>Enables <strong>tactical thinking</strong> at high search depths</li>
+  <li>Engine actively seeks moves that win material</li>
+  <li>Foundation for all position evaluation</li>
+</ul>
+
+<hr />
+
+<h2 id="positional-evaluation">Positional Evaluation</h2>
+
+<p>Material alone creates a tactical genius with <strong>no strategic sense</strong>. Without positional awareness, the engine might place knights on terrible squares!</p>
+
+<h3 id="solution-piece-square-tables-pst">Solution: Piece-Square Tables (PST)</h3>
+
+<p>PSTs assign <strong>positional bonuses</strong> for placing pieces on optimal squares.</p>
+
+<p><strong>Example: Knight PST</strong></p>
+
+<table cellspacing="0" cellpadding="0" style="border: 4px solid #333; border-collapse: collapse; margin: 0 auto; font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;">
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-50</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-40</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-40</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-50</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-40</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-20</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-20</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-40</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">10</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">15</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">15</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">10</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-30</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">5</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">15</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">20</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">20</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">15</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">5</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-30</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">15</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">20</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">20</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">15</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-30</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">5</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">10</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">15</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">15</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">10</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">5</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-30</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-40</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-20</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">5</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">5</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">0</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-20</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-40</td>
+  </tr>
+  <tr>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-50</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-40</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-30</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #b58863; color: black;">-40</td>
+    <td style="width: 50px; height: 50px; padding:0; line-height: 50px; text-align: center; font-size: 26px; background-color: #f0d9b5; color: black;">-50</td>
+  </tr>
+</table>
+
+<h3 id="key-insights-from-knight-pst">Key Insights from Knight PST</h3>
+
+<ul>
+  <li><strong>Center squares</strong> (+15 to +20): Knights dominate from the center</li>
+  <li><strong>Edge squares</strong> (-30 to -50): “Knights on the rim are dim!”</li>
+  <li><strong>Strategic positioning</strong> rewarded through evaluation bonuses</li>
+</ul>
+
+<p>This teaches the engine <strong>positional chess principles</strong> through numbers!</p>
+
+<hr />
+
+<h1 id="search-algorithm">Search Algorithm</h1>
+
+<h2 id="negamax-with-alpha-beta-pruning">Negamax with Alpha-Beta Pruning</h2>
+
+<p>NICE implements <strong>Negamax</strong>, an elegant optimization of the Minimax algorithm based on a simple principle:</p>
+
+<blockquote>
+  <p>What’s good for you is equally bad for your opponent</p>
+</blockquote>
+
+\[negamax(a, b) = -negamax(-a, -b)\]
+
+<h3 id="how-it-works">How It Works</h3>
+
+<ol>
+  <li><strong>Recursive search</strong> to specified depth</li>
+  <li><strong>Evaluate leaf nodes</strong> using material + PST</li>
+  <li><strong>Propagate scores</strong> back up the tree</li>
+</ol>
+
+<p>The result is an evaluation tree like this:</p>
+
+<pre><code class="language-mermaid">graph TD
+	A1(("-6"))
+	
+	B1["-2"]
+	B2["+6"]
+	B3["-2"]
+	
+	C1(("+2"))
+	C2(("-5"))
+	C3(("-6"))
+	C4(("+2"))
+	C5(("+4"))
+	C6(("+8"))
+	
+	D1["+5"]
+	D2["-3"]
+	D3["-2"]
+
+	A1 --- B1
+	A1 --- B2
+	A1 --- B3
+	
+	B1 --- C1
+	B1 --- C2
+	
+	B2 --- C3
+	
+	B3 --- C4
+	B3 --- C5
+	B3 --- C6
+	
+	C2 --- D1
+	C2 --- D2
+	
+	C4 --- D3
+	
+
+</code></pre>
+
+<hr />
+
+<h2 id="alpha-beta-pruning-the-speed-boost-">Alpha-Beta Pruning: The Speed Boost ⚡</h2>
+
+<p>Alpha-beta pruning <strong>cuts off entire branches</strong> when a better solution is already known. This allows massive sections of the search tree to be skipped!</p>
+
+<h3 id="performance-impact">Performance Impact</h3>
+<ul>
+  <li>Without pruning: Search millions of positions</li>
+  <li>With pruning: Skip 60-90% of positions</li>
+  <li><strong>Same result, fraction of the time</strong></li>
+</ul>
+
+<hr />
+
+<h2 id="move-ordering-making-pruning-effective">Move Ordering: Making Pruning Effective</h2>
+
+<p>Pruning only works well if <strong>good moves are searched first</strong>.</p>
+
+<h3 id="nices-move-ordering-strategy">NICE’s Move Ordering Strategy</h3>
+
+<ol>
+  <li><strong>Captures</strong> - Forcing moves that win material</li>
+  <li><strong>Killer Moves</strong> - Previously successful quiet moves</li>
+  <li><strong>Quiet Moves</strong> - Everything else</li>
+</ol>
+
+<h3 id="killer-move-heuristic">Killer Move Heuristic</h3>
+
+<p><strong>Killer moves</strong> are quiet moves that caused cutoffs in similar positions. By checking these first, we dramatically improve pruning efficiency.</p>
+
+<p>Think of it as the engine’s <strong>memory</strong> of what worked before!</p>
+
+<hr />
+
+<h2 id="summary">Summary</h2>
+
+<p>The NICE chess engine combines:</p>
+<ul>
+  <li>✅ Hybrid board representation for speed</li>
+  <li>✅ Efficient move generation (bitwise operations + precomputed tables)</li>
+  <li>✅ Material + positional evaluation</li>
+  <li>✅ Negamax search with alpha-beta pruning</li>
+  <li>✅ Smart move ordering with killer moves</li>
+</ul>
+
+<p>Result: <strong>~1700 Elo performance</strong> comparable to Stockfish Level 5!</p>
+
+<div style="text-align: center; margin: 3rem 0;">
+  <a href="https://lichess.org/@/NICE_BOT" style="display: inline-block; padding: 12px 24px; background: linear-gradient(45deg, #667eea, #764ba2); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+    Challenge NICE on Lichess →
+  </a>
+</div>
+
+        </article>
+        
+        <div class="back-to-home">
+            <a href="/#projects" class="btn btn-primary">
+                <i class="fas fa-arrow-left"></i> Back to Projects
+            </a>
+        </div>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Tarique Mackay. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>

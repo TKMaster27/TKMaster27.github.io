@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tarique Mackay - Honours Computer Science Student</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="#home" class="nav-brand">TM</a>
+            <ul class="nav-menu">
+                <li><a href="#about">About</a></li>
+                <li><a href="#skills">Skills</a></li>
+                <li><a href="#projects">Projects</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1>Tarique Mackay</h1>
+            <p class="hero-subtitle">Honours Computer Science Student</p>
+            <p class="hero-description">BSc Computer Science & Computer Engineering Graduate (Distinction) | University of Cape Town</p>
+            <div class="hero-buttons">
+                <a href="#projects" class="btn btn-primary">View Projects</a>
+                <a href="#contact" class="btn btn-secondary">Get In Touch</a>
+            </div>
+        </div>
+    </section>
+
+    <main class="container">
+        <section id="about" class="section">
+            <h2 class="section-title">About Me</h2>
+            <div class="about-content">
+                <p>I am an Honours student in Computer Science at the University of Cape Town, having graduated with distinction in BSc Computer Science and Computer Engineering. With a strong foundation in software development and a passion for tackling complex technical challenges, I specialize in high-performance computing, algorithms, and systems programming. I am committed to continuous learning and developing innovative solutions across diverse domains of computer science.</p>
+            </div>
+        </section>
+
+        <section id="skills" class="section">
+            <h2 class="section-title">Skills</h2>
+            <div class="skills-grid">
+                <div class="skill-item">
+                    <i class="fab fa-java"></i>
+                    <span>Java</span>
+                </div>
+                <div class="skill-item">
+                    <i class="fab fa-python"></i>
+                    <span>Python</span>
+                </div>
+                <div class="skill-item">
+                    <i class="fas fa-database"></i>
+                    <span>SQL</span>
+                </div>
+                <div class="skill-item">
+                    <i class="fa-solid fa-microchip"></i>
+                    <span>MIPS Assembly</span>
+                </div>
+                <div class="skill-item">
+                    <i class="fab fa-microsoft"></i>
+                    <span>C#</span>
+                </div>
+                <div class="skill-item">
+                    <i class="fab fa-cuttlefish"></i>
+                <span>C++</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="projects" class="section">
+            <h2 class="section-title">Projects</h2>
+            
+            <!-- Featured Projects -->
+            <div class="featured-projects">
+                <h3 class="featured-title">Featured Projects</h3>
+                <div class="featured-card">
+                    <div class="featured-icon">♟️</div>
+                    <div class="featured-content">
+                        <h3>NICE Chess Engine (C++)</h3>
+                        <p>A high-performance UCI chess engine comparable to Stockfish Level 5. Implements Bitboards, Alpha-Beta pruning, and move generation.</p>
+                        <div class="featured-links">
+                            <a href="/projects/nice-chess-engine/" class="featured-link">
+                                <i class="fas fa-book"></i>
+                                Read the Case Study →
+                            </a>
+                            <a href="https://lichess.org/@/NICE_BOT" class="featured-link" target="_blank" rel="noopener noreferrer">
+                                <i class="fas fa-chess"></i>
+                                Play on Lichess
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="other-projects-title">Other Projects</h3>
+            <div class="projects-grid">
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Bittorent Filesharing System</h3>
+                        <i class="fa-solid fa-share-nodes"></i>
+                    </div>
+                    <p>
+                        Created a bittorent filesharing system. This system allows for peer-to-peer downloading and sharing of files accross a network.
+                        File sharing was farther optimised by implimenting multithreading so you can download from multiple distributers (seeders) in a network.
+                        Implimented a TUI for a simple and easy to use user interface.
+                    </p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Python</span>
+                        <span class="tech-tag">Multithreading</span>
+                        <span class="tech-tag">Networking</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Foreground Image Processor</h3>
+                        <i class="fa-solid fa-image"></i>
+                    </div>
+                    <p>
+                        An image processor that is able to seperate the foreground and background of images.
+                        This project was built using C++ as it allows for efficent and fast memory management and 
+                        uses the RAII design pattern to ensure no memory leaks. This project allows a user to specify the size 
+                        of the desired image and can draw bounding boxes around objects found in the foreground of an image.
+                    </p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">C++</span>
+                        <span class="tech-tag">Image Generation</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Hotel Booking System</h3>
+                        <i class="fa-solid fa-bed"></i>
+                    </div>
+                    <p>
+                        Created a hotel booking system with friends. The system is designed to help hotels manage room bookings and is intended to be used by the receptionist as guests checkin and checkout.
+                        This project also generates important reports like the occupany level of the hotel over time. It also generates the projected income the hotel is expected to make based on bookings.
+                        A receptionist can easily search through bookings and find rooms that are available for guest to book. It also generates an invoice letter automatically.
+                    </p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">C#</span>
+                        <span class="tech-tag">.NET</span>
+                        <span class="tech-tag">SQL</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Audio File Manipulation With Assembly</h3>
+                        <i class="fa-solid fa-headphones"></i>
+                    </div>
+                    <p>
+                        Using the MIPS Assembly programming language, I made an audio file manipulator. This project is able to extract header information from a .wav file, 
+                        analyze and display inportant information and is also able to reverse the audio of any .wav file.
+                    </p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Assembly</span>
+                        <span class="tech-tag">Audio Manipulation</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Parallel Processing Abelian Sandpile</h3>
+                        <i class="fa-solid fa-image"></i>
+                    </div>
+                    <p>This cellular automata project simulates an Abelian Sandpile. It uses multithreading and parrallel processing to optimize performance. This was done using the fork/join framework built into Java.</p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Java</span>
+                        <span class="tech-tag">Multithreading</span>
+                        <span class="tech-tag">Image Generation</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>UCT Faculty Transfer System</h3>
+                        <i class="fas fa-graduation-cap"></i>
+                    </div>
+                    <p>A system that analyzes UCT transcripts to determine eligibility for faculty transfers into the science faculty. These requirements are found from the 2024 UCT Science Faculty handbook.</p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Java</span>
+                        <span class="tech-tag">SQL</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Taxi App Path Finding System</h3>
+                        <i class="fas fa-route"></i>
+                    </div>
+                    <p>
+                        An intelligent routing system that determines the fastest path from any point on a map to the nearest taxi rank.
+                        This was done by implimenting and adding onto dijkstra's algorithm. In the simulation taxi routes are optimised to pick up as many passengers along the way as they can when traveling between locations.
+                    </p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Java</span>
+                        <span class="tech-tag">Path Finding</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Hashmap Optimization</h3>
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <p>Implemented multithreading techniques to dramatically reduce optimization problem execution time from hours to seconds.</p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Java</span>
+                        <span class="tech-tag">Multithreading</span>
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-header">
+                        <h3>Snakes and Ladders Game</h3>
+                        <i class="fas fa-gamepad"></i>
+                    </div>
+                    <p>A complete game implementation featuring pause menu, music, shop system, player statistics, and user authentication. This game was made from scratch without the use of external java packages.</p>
+                    <div class="tech-tags">
+                        <span class="tech-tag">Java</span>
+                        <span class="tech-tag">Game Development</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="contact" class="section">
+            <h2 class="section-title">Get In Touch</h2>
+            <div class="contact-content">
+                <p>Interested in collaborating or have any questions? I'd love to hear from you!</p>
+                <div class="contact-links">
+                    <a href="mailto:tariquemackay@gmail.com" class="contact-link">
+                        <i class="fas fa-envelope"></i>
+                        Email Me
+                    </a>
+                    <a href="https://www.linkedin.com/in/tarique-mackay-ab7104286" class="contact-link">
+                        <i class="fab fa-linkedin"></i>
+                        LinkedIn
+                    </a>
+                    <a href="https://github.com/TKMaster27" class="contact-link">
+                        <i class="fab fa-github"></i>
+                        GitHub
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Tarique Mackay. All rights reserved.</p>
+    </footer>
+</body>
+
+</html>
