@@ -833,6 +833,24 @@
     <footer>
         <p>&copy; 2025 Tarique Mackay. All rights reserved.</p>
     </footer>
+    
+    <!-- Mermaid initialization script -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+        
+        // Convert mermaid code blocks to diagrams
+        document.addEventListener('DOMContentLoaded', function() {
+            const mermaidBlocks = document.querySelectorAll('pre code.language-mermaid');
+            mermaidBlocks.forEach((block, index) => {
+                const pre = block.parentElement;
+                const mermaidDiv = document.createElement('div');
+                mermaidDiv.className = 'mermaid';
+                mermaidDiv.textContent = block.textContent;
+                pre.replaceWith(mermaidDiv);
+            });
+        });
+    </script>
 </body>
 
 </html>
