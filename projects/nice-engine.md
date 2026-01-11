@@ -14,29 +14,57 @@ description: A deep dive into building a UCI-compliant chess engine in C++ using
   };
 </script>
 
+# NICE Chess Engine ♟️
+
+## Overview
+
 The **Not Intelligent Chess Engine**, otherwise known as **NICE**, is a UCI chess engine that implements key learning principles using low-level languages. NICE is developed in **C++** for speed and efficiency, allowing us to utilize low-level operations and CPU instructions to further speed up the engine. The engine uses **Data-Oriented Design** principles, prioritizing performance over object-oriented data representation.
 
 NICE is live on Lichess for all to try, challenge, and test its strength. It is comparable to Stockfish Level 5, with an estimated Elo rating of **1500-1700**.
 
-**[Try the engine yourself here!](https://lichess.org/@/NICE_BOT)**
+<div style="text-align: center; margin: 2rem 0;">
+  <a href="https://lichess.org/@/NICE_BOT" style="display: inline-block; padding: 12px 24px; background: linear-gradient(45deg, #667eea, #764ba2); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+    🎮 Play Against NICE on Lichess
+  </a>
+</div>
+
+---
+
+## Technical Highlights
+
+- **Board Representation**: Hybrid approach using Bitboards and Mailbox
+- **Move Generation**: Optimized for sliders and leapers with precomputed lookup tables
+- **Search Algorithm**: Negamax with Alpha-Beta pruning
+- **Evaluation**: Material + Piece-Square Tables
+- **Performance**: ~1500-1700 Elo rating
 
 ---
 
 # Board Representation
 
-There are typically 2 ways to represent they game board in an engine. Mailbox and Bitboards. 
+There are typically 2 ways to represent they game board in an engine: **Mailbox** and **Bitboards**. 
 
-## Mailbox
+## Approach 1: Mailbox
 
-Mailbox is the more intuitive approach where the board is represented as an array of 64 elements where each element contains the ID of what type of piece is on that square.
+Mailbox is the more intuitive approach where the board is represented as an **array of 64 elements** where each element contains the ID of what type of piece is on that square.
 
-The advantage of this representation is **lookup speed**. It takes $O(1)$ time complexity to look up what piece is on any specific square. This is helpful when checking if a square is occupied or capturing a piece.
+### Advantages ✅
+- **Ultra-fast lookup speed**: $O(1)$ time complexity to check what piece is on any specific square
+- Perfect for checking if a square is occupied or capturing pieces
 
-The down side of this way of representing the board this way is there is no efficient way of knowing where each piece is for move generation. The only way to find out where pieces are is to loop through the entire array to identify what type of piece is on each square and then run the appropriate move generation for that piece. This means if there are only 3 pieces on the board we have to look through the entire board to find and identify the pieces rather than having some way of knowing where the pieces are instantly.
+### Disadvantages ❌
+- **Inefficient piece location**: Must loop through entire 64-element array to find pieces
+- Even with only 3 pieces on the board, must scan all 64 squares
+- No quick way to know where pieces are without iteration
 
-# Bitboards
+---
 
-Bitboard is a way of compressing the idea of the mailbox into a simple integer. It leverages the fact that there are 64 squares on the board and that modern computer hardware and CPUs have a 64-bit architecture. This means we can fit information of an entire board inside a single CPU register.
+## Approach 2: Bitboards
+
+Bitboard is a way of compressing the idea of the mailbox into a **single 64-bit integer**. It leverages the fact that there are 64 squares on the board and that modern computer hardware and CPUs have a 64-bit architecture. This means we can fit information of an entire board inside a single CPU register.
+
+### Why This Matters
+Each bit in the 64-bit integer represents one square on the board. If the bit is `1`, there's a piece on that square. If it's `0`, the square is empty.
 
 <table cellspacing="0" cellpadding="0" style="border: 4px solid #333; border-collapse: collapse; margin: 0 auto; font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;">
   <tr>
@@ -206,43 +234,84 @@ If we visualise the board being numbered as show above, we can map each square t
   </tr>
 </table>
 
-This means the board above of pawns can be represented as a bitboard can be represented internally like this `0b00000000 00000000 00000000 00000000 00000000 00000000 11111111 00000000`.
+The board above with pawns can be represented internally as:
+
+```
+0b00000000 00000000 00000000 00000000 00000000 00000000 11111111 00000000
+```
 
 In this example, bits 8 to 15 have been flipped to `1`, representing pieces occupying those squares.
 
-The advantages of using a bitboard is that it is significantly faster as move generation is simply bitwise operations. Using boolean bitwise operations are extremely fast and checking attacked squares is as simple as applying a bitmask to the board. This drastically speeds up computations. With this representation is also possible to almost instantly get the position of pieces and the total number of pieces by leveraging CPU build in instructions `LSB` and `PopCount`.
+### Advantages ✅
+- **Lightning-fast move generation**: All move generation is bitwise operations
+- **Instant attacked square checks**: Simple bitmask application
+- **Fast piece counting**: CPU instructions like `LSB` and `PopCount` give instant results
+- **Compact memory footprint**: 13 bitboards = 104 bytes vs Mailbox = 252 bytes
 
-The disadvantage of using bitboard is that they simply represent if a square is occupied or not. They do not tell you what type of piece is on the occupied square. Because of this you need one bitboard for each piece type. In the NICE engine it uses 13 bitboards to represent the entire board however that is only 104 bytes of memory which is till a small memory footprint compared to the mailbox approach which requires about 252 bytes.
+### Disadvantages ❌
+- **No piece type information**: Only shows occupied/empty, not what piece is there
+- **Multiple bitboards needed**: One for each piece type (13 total for NICE)
 
-## Hybrid
+---
 
-The hybrid approach for board representation is to use a combination of bitboards and mailbox. Noticing that the strengths of one representation are the weaknesses of the other and vice-versa. NICE uses both representations for the board and uses the appropriate data structure when doing computations to keep to each representations strengths. The only overhead is that it must be ensured that both board representations are kept synced to prevent board corruption and unintended behaviour.
+## The Solution: Hybrid Approach 🎯
+
+The hybrid approach combines **both Bitboards and Mailbox**. Notice how the strengths of one representation perfectly complement the weaknesses of the other!
+
+### How NICE Uses Both
+- **Bitboards** for fast move generation and attack queries
+- **Mailbox** for instant piece-type lookups
+
+### The Trade-off
+The only overhead is ensuring both representations stay **synchronized** to prevent board corruption. This is a small price to pay for the combined benefits of both approaches!
+
+---
 
 # Move Generation
 
-## What is a move?
+## Move Encoding
 
-A move is represented as a compact 32-bit integer. This is down for efficiency and to make the data structure as compact as possible.
+A move is represented as a **compact 32-bit integer** for maximum efficiency and minimal memory footprint.
 
-The bits of a move are broken down as follows:
+### Bit Layout
 
-```
-bits 0-5        : from square (0-63)  [6 bits needed]
-bits 6-11       : to square (0-63)    [6 bits needed]
-bits 12-17      : flags               [6 bits needed]
-bits 18-21      : promoted to         [4 bits needed]
-bits 22-25      : piece captured      [4 bits needed]
-```
+| Bits | Purpose | Range |
+|------|---------|-------|
+| 0-5 | From square | 0-63 |
+| 6-11 | To square | 0-63 |
+| 12-17 | Flags | Castling, en passant, captures |
+| 18-21 | Promoted to | Piece type |
+| 22-25 | Piece captured | Piece type |
 
-Move flags are things like castling, double pushing of pawns, captures and any extra information about a move.
+This compact representation means each move takes just **4 bytes** of memory!
 
-## How are moves computed
+---
 
-There are two types of movements when it comes to chess pieces. Sliders and Leapers. Sliders are pieces that can slide up and down the board until they encounter another piece or blocker. Leapers "teleport" or leap to there target square without having to concern themselves with blockers. Using this we can categorise Rooks, Bishops and Queens as sliders and Knights, Kings and Pawns as leapers.
+## Movement Categories
 
-### Sliders
+Chess pieces fall into two fundamental categories based on how they move:
 
-Using the offsets shown below we can calculate the next position of sliding pieces as these offsets act as cardinal direction. This is then looped until the piece encounters a blocker that prevents it from moving farther or reaches the edge of the board.
+### 🔹 Sliders
+Pieces that **slide** across the board until hitting another piece or the edge
+- **Rooks** (horizontal/vertical)
+- **Bishops** (diagonal)
+- **Queens** (all directions)
+
+### 🔸 Leapers  
+Pieces that **"teleport"** to their destination without blockers affecting them
+- **Knights** (L-shape jumps)
+- **Kings** (one square any direction)
+- **Pawns** (special case: move like sliders, capture like leapers)
+
+---
+
+### Slider Move Generation
+
+Using **directional offsets**, we calculate the next position iteratively. The process loops until:
+- A blocker (piece) is encountered
+- The edge of the board is reached
+
+The offsets act as **cardinal directions** for movement:
 
 <table cellspacing="0" cellpadding="0" style="border: 4px solid #333; border-collapse: collapse; margin: 0 auto; font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;">
   <tr>
@@ -327,9 +396,18 @@ Using the offsets shown below we can calculate the next position of sliding piec
   </tr>
 </table>
 
-### Leapers
+---
 
-Since a Knight at square E4 always attacks the same squares, we don't need to calculate this at runtime. We pre-compute look-up tables for all 64 squares. Generating a Knight move is just a single array lookup: Attacks = KnightTable[square_index]. This is true for kings as well.
+### Leaper Move Generation
+
+Since a Knight at square E4 **always attacks the same squares**, we don't need runtime calculations!
+
+#### Optimization Strategy
+1. **Pre-compute** lookup tables for all 64 squares at startup
+2. **Single array lookup** at runtime: `Attacks = KnightTable[square_index]`
+3. Same approach works for Kings
+
+This turns move generation into an **O(1) operation**!
 
 <table cellspacing="0" cellpadding="0" style="border: 4px solid #333; border-collapse: collapse; margin: 0 auto; font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;">
   <tr>
@@ -414,15 +492,40 @@ Since a Knight at square E4 always attacks the same squares, we don't need to ca
   </tr>
 </table>
 
-Pawns are unique. They move like sliders (forward) but capture like leapers (diagonally). We handle them with specific bitmasks that account for "En Passant" and double-push rules.
+### Special Case: Pawns ♙
+
+Pawns are **unique hybrids**:
+- Move like **sliders** (forward only)
+- Capture like **leapers** (diagonally)
+
+We handle them with specific bitmasks accounting for:
+- **En Passant** captures
+- **Double-push** from starting position
+
+---
 
 # Board Evaluation
 
-Board evaluation is primarily dominated by material value. This is a simple way to evaluate board positions but is effective for a start. This also allows the engine to think tactically and favour moves that result in the loss of material for the opponent. 
+## Material Evaluation
 
-For strategic evaluation Piece-Square-Tables were implemented. This was done as with material evaluation alone, the engine could be a tactical genius at a high depth but has not concept of positional and strategic play. This can result in the engine putting pieces on squares that they don't really belong, like a knight on the edge of the board. 
+Board evaluation is primarily based on **material value** - a simple but highly effective approach.
 
-Piece-Square-Tables (PST) assign an extra bonus when pieces are placed on more optimal squares. The image below shows an example of how the bonuses look for the knight PST.
+### Benefits
+- Enables **tactical thinking** at high search depths
+- Engine actively seeks moves that win material
+- Foundation for all position evaluation
+
+---
+
+## Positional Evaluation
+
+Material alone creates a tactical genius with **no strategic sense**. Without positional awareness, the engine might place knights on terrible squares!
+
+### Solution: Piece-Square Tables (PST)
+
+PSTs assign **positional bonuses** for placing pieces on optimal squares.
+
+**Example: Knight PST**
 
 <table cellspacing="0" cellpadding="0" style="border: 4px solid #333; border-collapse: collapse; margin: 0 auto; font-family: 'Segoe UI Symbol', 'Arial Unicode MS', sans-serif;">
   <tr>
@@ -507,15 +610,33 @@ Piece-Square-Tables (PST) assign an extra bonus when pieces are placed on more o
   </tr>
 </table>
 
-As you can see the PST incentivises the knights to be in the centre of the board where they can oversea many squares and punishes putting the knights on the edge of the board as "knights on the rim are dim".
+### Key Insights from Knight PST
 
-# Search
+- **Center squares** (+15 to +20): Knights dominate from the center
+- **Edge squares** (-30 to -50): "Knights on the rim are dim!"
+- **Strategic positioning** rewarded through evaluation bonuses
 
-To search and evaluate position, NICE implements a negamax search with alpha-beta pruning. Negamax is an optimisation on minimax based on the fact that what is good for you is bad for the opponent. 
+This teaches the engine **positional chess principles** through numbers!
+
+---
+
+# Search Algorithm
+
+## Negamax with Alpha-Beta Pruning
+
+NICE implements **Negamax**, an elegant optimization of the Minimax algorithm based on a simple principle:
+
+> What's good for you is equally bad for your opponent
 
 $$negamax(a, b) = -negamax(-a, -b)$$
 
-This is a recursive function that will recursively search to a specified depth at each move in a position and call the evaluation function on the leaf nodes. This results in an evaluation tree similar to the one below.
+### How It Works
+
+1. **Recursive search** to specified depth
+2. **Evaluate leaf nodes** using material + PST
+3. **Propagate scores** back up the tree
+
+The result is an evaluation tree like this:
 
 ```mermaid
 graph TD
@@ -557,10 +678,50 @@ graph TD
 
 ```
 
-Alpha-beta pruning allows the engine to "cuttoff" branches in the true as there is already a better know solution before evaluation, this allows for large sections of the tree to be skipped drastically increasing evaluation time.
+---
 
-The pruning is only effective if good moves are evaluated first. To do this, move ordering was implemented. This enforces fundamental chess principles such as looking at forcing moves before quiet moves. 
+## Alpha-Beta Pruning: The Speed Boost ⚡
 
-The concept of killer moves has also been implemented. Killer moves are moves that are so good in a particular position that they take precedence. This is used as a search heuristic so the search can look in the best direction
+Alpha-beta pruning **cuts off entire branches** when a better solution is already known. This allows massive sections of the search tree to be skipped!
 
-Killer moves are moves that are already known to be good so it drastically improves speed up when considered for move ordering. 
+### Performance Impact
+- Without pruning: Search millions of positions
+- With pruning: Skip 60-90% of positions
+- **Same result, fraction of the time**
+
+---
+
+## Move Ordering: Making Pruning Effective
+
+Pruning only works well if **good moves are searched first**.
+
+### NICE's Move Ordering Strategy
+
+1. **Captures** - Forcing moves that win material
+2. **Killer Moves** - Previously successful quiet moves
+3. **Quiet Moves** - Everything else
+
+### Killer Move Heuristic
+
+**Killer moves** are quiet moves that caused cutoffs in similar positions. By checking these first, we dramatically improve pruning efficiency.
+
+Think of it as the engine's **memory** of what worked before!
+
+---
+
+## Summary
+
+The NICE chess engine combines:
+- ✅ Hybrid board representation for speed
+- ✅ Efficient move generation (bitwise operations + precomputed tables)
+- ✅ Material + positional evaluation
+- ✅ Negamax search with alpha-beta pruning
+- ✅ Smart move ordering with killer moves
+
+Result: **~1700 Elo performance** comparable to Stockfish Level 5!
+
+<div style="text-align: center; margin: 3rem 0;">
+  <a href="https://lichess.org/@/NICE_BOT" style="display: inline-block; padding: 12px 24px; background: linear-gradient(45deg, #667eea, #764ba2); color: white; text-decoration: none; border-radius: 8px; font-weight: 600;">
+    Challenge NICE on Lichess →
+  </a>
+</div> 
